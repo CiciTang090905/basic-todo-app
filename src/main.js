@@ -20,6 +20,8 @@ function renderTodos() {
   todoListElement.innerHTML = ""; // clear the current list
 
   // Filter todos based on the current filter setting
+  // disadvantage of funcitonal programming: take a lot of memory space due to copying
+  // advantage: easy to debug, since the object is immutable, you can always check the old one
   let filteredTodos = [];
   for (let i = 0; i < todos.length; i++) {
     const todo = todos[i];
@@ -70,20 +72,30 @@ function renderTodos() {
 
 // Function to toggle the completed status of a todo
 function handleClickOnTodoList(event) {
+  /*
   if (event.target.id.includes("todo-text")) {
     const todoId = event.target.id.split("-").pop();
     const todoIdNumber = Number(todoId);
 
-    for (let i = 0; i < todos.length; i++) {
+    /*for (let i = 0; i < todos.length; i++) {
       if (todos[i].id === todoIdNumber) {
         todos[i].completed = !todos[i].completed;
       }
     }
+  }*/
+  // Helper function to find the target todo element
+  const findTargetTodoElement = (event) =>
+    event.target.id?.includes("todo-text") ? event.target : null;
 
+  // Helper function to parse the todo id from the todo element
+  const parseTodoId = (todo) => (todo ? Number(todo.id.split("-").pop()) : -1);
+
+  // Event handler to toggle the completed status of a todo item
+  const handleClickOnTodoList = (event) => {
+    todos = toggleTodo(todos, parseTodoId(findTargetTodoElement(event)));
     renderTodos();
-  }
+  };
 }
-
 
 // Function to handle filter selection from the navbar
 function handleClickOnNavbar(event) {
