@@ -1,153 +1,194 @@
 import "./style.css";
 
-// Define the state of our app
-const todos = [
-  { id: 1, text: "Buy milk", completed: false },
-  { id: 2, text: "Buy bread", completed: false },
-  { id: 3, text: "Buy jam", completed: true },
-];
-let nextTodoId = 4;
-let filter = "all"; // can be 'all', 'active', or 'completed'
-
-const todoNav = document.getElementById("todo-nav");
-const newTodoInput = document.getElementById("new-todo");
+// Get the necessary DOM elements
 const todoListElement = document.getElementById("todo-list");
+const inputNewTodo = document.getElementById("new-todo");
+const todoNav = document.getElementById("todo-nav");
+const markAllCompleted = document.getElementById("mark-all-completed");
+const clearCompleted = document.getElementById("clear-completed");
+const activeTodosCount = document.getElementById("todo-count");
 
-// Function to render the todos
-// Function to render the todos
-function renderTodos() {
-  const todoListElement = document.getElementById("todo-list");
-  todoListElement.innerHTML = ""; // clear the current list
+// Helper function to create a new array with the existing todos and a new todo item
+const addTodo = (todos, newTodoText, newTodoId) => [
+  ...todos,
+  { id: newTodoId, text: newTodoText, completed: false },
+];
 
-  // Filter todos based on the current filter setting
-  // disadvantage of funcitonal programming: take a lot of memory space due to copying
-  // advantage: easy to debug, since the object is immutable, you can always check the old one
-  let filteredTodos = [];
-  for (let i = 0; i < todos.length; i++) {
-    const todo = todos[i];
-    if (filter === "all") {
-      filteredTodos.push(todo);
-    } else if (filter === "completed" && todo.completed) {
-      filteredTodos.push(todo);
-    } else if (filter === "active" && !todo.completed) {
-      filteredTodos.push(todo);
-    }
+// Helper function to toggle the completed status of a todo item
+const toggleTodo = (todos, todoId) =>
+  todos.map((todo) =>
+    todo.id === todoId ? { ...todo, completed: !todo.completed } : todo,
+  );
+
+// Helper function to filter todos based on the current filter setting
+const filterTodos = (todos, filter) => {
+  switch (filter) {
+    case "all":
+      return [...todos];
+    case "completed":
+      return todos.filter((todo) => todo.completed);
+    case "active":
+      return todos.filter((todo) => !todo.completed);
+    default:
+      return [...todos];
   }
+};
 
-  // Helper function to create todo text element
-  const createTodoText = (todo) => {
-    const todoText = document.createElement("div");
-    todoText.id = `todo-text-${todo.id}`;
-    todoText.classList.add(
-      "todo-text",
-      ...(todo.completed ? ["line-through"] : []),
-    );
-    todoText.innerText = todo.text;
-    return todoText;
+// Helper function to mark all todos as completed
+const markAllTodosCompleted = (todos) => {
+  return todos.map((todo) => {
+    return { ...todo, completed: true };
+  });
+};
+
+// Helper function to delete all completed todos
+const deleteCompletedTodos = (todos) => {
+  return todos.filter((todo) => !todo.completed);
+};
+
+// Factory function to create a todo app
+const createTodoApp = () => {
+  // Define the state of our app
+  let todos = [];
+  let nextTodoId = 1;
+  let filter = "all"; // can be 'all', 'active', or 'completed'
+
+  return {
+    addTodo: (newTodoText) => {
+      todos = addTodo(todos, newTodoText, nextTodoId++);
+    },
+    toggleTodo: (todoId) => {
+      todos = toggleTodo(todos, todoId);
+    },
+    setFilter: (newFilter) => {
+      filter = newFilter;
+    },
+    markAllCompleted: () => {
+      todos = markAllTodosCompleted(todos);
+    },
+    deleteCompleted: () => {
+      todos = deleteCompletedTodos(todos);
+    },
+    getNumberOfActiveTodos: () =>
+      todos.reduce((acc, todo) => acc + !todo.completed, 0),
+    getTodos: () => filterTodos(todos, filter),
   };
+};
 
-  // Helper function to create todo edit input element
-  const createTodoEditInput = (todo) => {
-    const todoEdit = document.createElement("input");
-    todoEdit.classList.add("hidden", "todo-edit");
-    todoEdit.value = todo.text;
-    return todoEdit;
-  };
+const todoApp = createTodoApp();
 
-  // Helper function to create a todo item
-  const createTodoItem = (todo) => {
-    const todoItem = document.createElement("div");
-    todoItem.classList.add("p-4", "todo-item");
-    todoItem.append(createTodoText(todo), createTodoEditInput(todo));
-    return todoItem;
-  };
+// Helper function to create todo text element
+const createTodoText = (todo) => {
+  const todoText = document.createElement("div");
+  todoText.id = `todo-text-${todo.id}`;
+  todoText.classList.add(
+    "todo-text",
+    ...(todo.completed ? ["line-through"] : []),
+  );
+  todoText.innerText = todo.text;
+  return todoText;
+};
 
-  const todoElements = filteredTodos.map(createTodoItem);
+// Helper function to create todo edit input element
+const createTodoEditInput = (todo) => {
+  const todoEdit = document.createElement("input");
+  todoEdit.classList.add("hidden", "todo-edit");
+  todoEdit.value = todo.text;
+  return todoEdit;
+};
+
+// Helper function to create a todo item
+const createTodoItem = (todo) => {
+  const todoItem = document.createElement("div");
+  todoItem.classList.add("p-4", "todo-item");
+  todoItem.append(createTodoText(todo), createTodoEditInput(todo));
+  return todoItem;
+};
+
+// Function to render the todos based on the current filter
+const renderTodos = () => {
+  todoListElement.innerHTML = ""; // Clear the current list to avoid duplicates
+
+  const todoElements = todoApp.getTodos().map(createTodoItem);
   todoListElement.append(...todoElements);
 
-  if (todo.completed) {
-    todoText.classList.add("line-through");
-  }
-}
+  activeTodosCount.innerText = `${todoApp.getNumberOfActiveTodos()} item${todoApp.getNumberOfActiveTodos() === 1 ? "" : "s"} left`;
+};
 
-// Function to toggle the completed status of a todo
-function handleClickOnTodoList(event) {
-  /*
-  if (event.target.id.includes("todo-text")) {
-    const todoId = event.target.id.split("-").pop();
-    const todoIdNumber = Number(todoId);
-
-    /*for (let i = 0; i < todos.length; i++) {
-      if (todos[i].id === todoIdNumber) {
-        todos[i].completed = !todos[i].completed;
-      }
+// Event handler to create a new todo item
+const handleKeyDownToCreateNewTodo = (event) => {
+  if (event.key === "Enter") {
+    const todoText = event.target.value.trim();
+    if (todoText) {
+      todoApp.addTodo(todoText);
+      event.target.value = ""; // Clear the input
+      renderTodos();
     }
-  }*/
-  // Helper function to find the target todo element
-  const findTargetTodoElement = (event) =>
-    event.target.id?.includes("todo-text") ? event.target : null;
+  }
+};
 
-  // Helper function to parse the todo id from the todo element
-  const parseTodoId = (todo) => (todo ? Number(todo.id.split("-").pop()) : -1);
+// Helper function to find the target todo element
+const findTargetTodoElement = (event) =>
+  event.target.id?.includes("todo-text") ? event.target : null;
 
-  // Event handler to toggle the completed status of a todo item
-  const handleClickOnTodoList = (event) => {
-    todos = toggleTodo(todos, parseTodoId(findTargetTodoElement(event)));
-    renderTodos();
-  };
-}
+// Helper function to parse the todo id from the todo element
+const parseTodoId = (todo) => (todo ? Number(todo.id.split("-").pop()) : -1);
 
-// Function to handle filter selection from the navbar
-function handleClickOnNavbar(event) {
+// Event handler to toggle the completed status of a todo item
+const handleClickOnTodoList = (event) => {
+  todoApp.toggleTodo(parseTodoId(findTargetTodoElement(event)));
+  renderTodos();
+};
+
+// Helper function to update the class list of a navbar element
+const updateClassList = (element, isActive) => {
+  const classes = [
+    "underline",
+    "underline-offset-4",
+    "decoration-rose-800",
+    "decoration-2",
+  ];
+  if (isActive) {
+    element.classList.add(...classes);
+  } else {
+    element.classList.remove(...classes);
+  }
+};
+
+// Helper function to render the navbar anchor elements
+const renderTodoNavBar = (href) => {
+  Array.from(todoNav.children).forEach((element) => {
+    updateClassList(element, element.href === href);
+  });
+};
+
+// Event handler to filter the todos based on the navbar selection
+const handleClickOnNavbar = (event) => {
   // if the clicked element is an anchor tag
   if (event.target.tagName === "A") {
     const hrefValue = event.target.href;
-    const action = hrefValue.split("/").pop();
-    filter = action === "" ? "all" : action;
-    renderTodos();
+    todoApp.setFilter(hrefValue.split("/").pop() || "all");
     renderTodoNavBar(hrefValue);
+    renderTodos();
   }
-}
+};
 
-// Function to update the navbar anchor elements
-function renderTodoNavBar(href) {
-  const elements = todoNav.children;
-  for (let i = 0; i < elements.length; i++) {
-    const element = elements[i];
-    if (element.href === href) {
-      element.classList.add(
-        "underline",
-        "underline-offset-4",
-        "decoration-rose-800",
-        "decoration-2",
-      );
-    } else {
-      element.classList.remove(
-        "underline",
-        "underline-offset-4",
-        "decoration-rose-800",
-        "decoration-2",
-      );
-    }
-  }
-}
-
-function handleNewTodoKeyDown(event) {
-  if (event.key === "Enter") {
-    const newTodoInput = event.target;
-    const todoText = newTodoInput.value.trim();
-    if (todoText === "") {
-      newTodoInput.value = "";
-      return;
-    }
-    todos.push({ id: nextTodoId++, text: todoText, completed: false });
-    newTodoInput.value = ""; // clear the input
-  }
+// Event handler to mark all todos as completed
+const handleMarkAllCompleted = () => {
+  todoApp.markAllCompleted();
   renderTodos();
-}
+};
 
-newTodoInput.addEventListener("keydown", handleNewTodoKeyDown);
-todoNav.addEventListener("click", handleClickOnNavbar);
-// Event listener to initialize the app after the DOM content is fully loaded
-document.addEventListener("DOMContentLoaded", renderTodos);
+// Event handler to clear all completed todos
+const clearCompletedTodos = () => {
+  todoApp.deleteCompleted();
+  renderTodos();
+};
+
+// Add the event listeners
 todoListElement.addEventListener("click", handleClickOnTodoList);
+inputNewTodo.addEventListener("keydown", handleKeyDownToCreateNewTodo);
+todoNav.addEventListener("click", handleClickOnNavbar);
+markAllCompleted.addEventListener("click", handleMarkAllCompleted);
+clearCompleted.addEventListener("click", clearCompletedTodos);
+document.addEventListener("DOMContentLoaded", renderTodos);
